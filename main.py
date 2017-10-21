@@ -9,7 +9,8 @@ from bs4 import BeautifulSoup
 LIBRUS_URL = 'https://synergia.librus.pl'
 
 class Class:
-    def __init__(self, weekday, number, name=None, teacher=None, group=None, room=None, free=False):
+    def __init__(self, weekday, number, name=None, teacher=None, substitute_teacher=False, group=None, room=None, free=False):
+        self.substitute_teacher = substitute_teacher
         self.room = room
         self.group = group
         self.name = name
@@ -19,7 +20,7 @@ class Class:
         self.free = free
 
 
-class_details_re = re.compile(r'^(\s*-\s*)(?P<teacher>.*?)\s*(?P<group>\(.*?\))?\s*(?P<room>s. .*?)$')
+class_details_re = re.compile(r'^(\s*-\s*)(?P<teacher>.*?)\s*(?P<group>\(.*?\))?\s*(?P<room>s. .*)?$')
 
 
 class Librus:
@@ -27,13 +28,13 @@ class Librus:
         self.username = username
         self.password = password
         self.cookies = requests.cookies.RequestsCookieJar();
-        self.cookies.set("TestCookie", "1")
+        self.cookies.set('TestCookie', '1')
 
     def login(self):
         payload = {
-            "login": self.username,
-            "passwd": self.password,
-            "czy_js": 1
+            'login': self.username,
+            'passwd': self.password,
+            'czy_js': 1
         }
 
         r = requests.post(LIBRUS_URL + '/loguj',
@@ -51,7 +52,7 @@ class Librus:
             html = r.text
         else:
             payload = {
-                "tydzien": week
+                'tydzien': week
             }
             r = requests.post(url, cookies=self.cookies, data=payload)
             html = r.text
@@ -62,6 +63,12 @@ class Librus:
         schedule = [[None for _ in range(0, 12)] for _ in range(0, 8)]
         for hour_number, hour in enumerate(hours):
             for weekday, single_class in enumerate(hour.select('td')[1:-1]):  # the first and last column is the hour number
+                substitute_teacher = False
+                if single_class.a is not None and single_class.a.text.strip() == 'zastępstwo':
+                    # Read the next comment below to see what extract does
+                    single_class.a.extract()
+                    substitute_teacher = True
+
                 # Extract removes the <b> element from the table cell.
                 # We need to do that, because the whole cell is formatted as
                 # '<b>class name</b><br/>details', and we want to be able to
@@ -69,30 +76,30 @@ class Librus:
                 name_html = single_class.b.extract() if single_class.b is not None else None
 
                 if name_html is None:
-                    schedule[weekday][hour_number] = Class(weekday, hour_number, free=True)
+                    schedule[weekday][hour_number] = None  # no class
                     continue
 
                 # we can just extract the entire text, because the class name was removed earlier.
                 name = name_html.text
-                details = single_class.text.replace('\xa0', ' ').replace('\n', ' ')
+                details = single_class.text.replace('\xa0', ' ').replace('\n', ' ').strip()
                 details_match = class_details_re.match(details)
-                if details_match is None:
-                    # TODO: zastępstwa
-                    continue
 
-                teacher = details_match.group('teacher')
-                group = details_match.group('group')
-                room = details_match.group('room')
+                teacher = group = room = None
+                if details_match is not None:
+                    teacher = details_match.group('teacher')
+                    group = details_match.group('group')
+                    room = details_match.group('room')
+
                 schedule[weekday][hour_number] = Class(weekday, hour_number,
                                                        name=name,
                                                        teacher=teacher,
+                                                       substitute_teacher=substitute_teacher,
                                                        room=room,
                                                        group=group)
-
         return schedule
 
 s=''
 if __name__ == '__main__':
-    l = Librus("", "")
+    l = Librus('', '')
     l.login()
     s=l.get_timetable()
