@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 
 LIBRUS_URL = 'https://synergia.librus.pl'
 
-
 class Class:
     def __init__(self, weekday, number, name=None, teacher=None, group=None, room=None, free=False):
         self.room = room
@@ -49,6 +48,12 @@ class Librus:
 
         if week is None:
             r = requests.get(url, cookies=self.cookies)
+            html = r.text
+        else:
+            payload = {
+                "tydzien": week
+            }
+            r = requests.post(url, cookies=self.cookies, data=payload)
             html = r.text
 
         soup = BeautifulSoup(html, 'html.parser')
