@@ -23,11 +23,13 @@ class_details_re = re.compile(r'^(\s*-\s*)(?P<teacher>.*?)\s*(?P<group>\(.*?\))?
 
 
 class Librus:
-    def __init__(self, username, password):
+    def __init__(self, username=None, password=None, cookie=None):
         self.username = username
         self.password = password
         self.cookies = requests.cookies.RequestsCookieJar();
         self.cookies.set('TestCookie', '1')
+        if cookie is not None:
+            self.cookies.set('DZIENNIKSID', cookie)
 
     def login(self):
         payload = {
@@ -39,7 +41,7 @@ class Librus:
         r = requests.post(LIBRUS_URL + '/loguj',
                           data=payload, cookies=self.cookies, allow_redirects=False)
         self.cookies = r.cookies
-        return r.headers.get('Location') == '/uczen_index'
+        return r.cookies.get('DZIENNIKSID') if r.headers.get('Location') == '/uczen_index' else None
 
     def get_timetable(self, week=None):
         url = LIBRUS_URL + '/przegladaj_plan_lekcji'
