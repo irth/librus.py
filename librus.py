@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 LIBRUS_URL = 'https://synergia.librus.pl'
 
 class Class:
-    def __init__(self, weekday, number, name=None, teacher=None, substitute_teacher=False, group=None, room=None, free=False):
+    def __init__(self, weekday, number, name=None, teacher=None, substitute_teacher=False, group=None, room=None):
         self.substitute_teacher = substitute_teacher
         self.room = room
         self.group = group
@@ -17,10 +17,9 @@ class Class:
         self.teacher = teacher
         self.weekday = weekday
         self.number = number
-        self.free = free
 
 
-class_details_re = re.compile(r'^(\s*-\s*)(?P<teacher>.*?)\s*(?P<group>\(.*?\))?\s*(?P<room>s. .*)?$')
+class_details_re = re.compile(r'^(\s*-\s*)(?P<teacher>.*?)\s*(?P<group>\(.*?\))?\s*(?P<room>s\. .*)?$')
 
 
 class Librus:
@@ -60,7 +59,7 @@ class Librus:
         soup = BeautifulSoup(html, 'html.parser')
 
         hours = soup.select('table.plan-lekcji tr.line1')
-        schedule = [[None for _ in range(0, 12)] for _ in range(0, 8)]
+        schedule = [[None for _ in range(0, 12)] for _ in range(0, 7)]
         for hour_number, hour in enumerate(hours):
             for weekday, single_class in enumerate(hour.select('td')[1:-1]):  # the first and last column is the hour number
                 substitute_teacher = False
